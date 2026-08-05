@@ -23,7 +23,7 @@ StableOps Agent Signer 是由客户自行托管的签名器伴随服务，用于
 
 - Node.js 20 或更高版本。
 - 目标环境对应的 StableOps 执行授权公钥和密钥编号。
-- 本地测试需要 Base Sepolia 钱包私钥，钱包内应有测试 USDC 和用于支付手续费的测试 ETH。
+- 本地测试需要 Base Sepolia 钱包私钥，钱包内应有足够的测试 USDC。当前 EIP-3009 流程由结算服务提交交易，付款钱包不需要测试 ETH。
 - AWS KMS 需要用途为 `SIGN_VERIFY` 且支持 `ECDSA_SHA_256` 的 `ECC_SECG_P256K1` 密钥。
 
 ## 安装
@@ -65,7 +65,7 @@ const { url } = await startSignerSidecar({
   signer,
   host: '127.0.0.1',
   port: 8789,
-  authToken: process.env.STABLEOPS_SIDECAR_TOKEN,
+  authToken: process.env.STABLEOPS_SIDECAR_TOKEN!,
 })
 
 console.log(`签名器正在监听 ${url}`)

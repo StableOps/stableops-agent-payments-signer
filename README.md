@@ -28,7 +28,7 @@ that authorizes an agent to use that wallet.
 
 - Node.js 20 or newer.
 - The StableOps execution-grant public key and key ID for the target environment.
-- For local testing, a Base Sepolia wallet private key holding test USDC and test ETH.
+- For local testing, a Base Sepolia wallet private key holding enough test USDC. The current EIP-3009 flow is submitted by the facilitator and does not require test ETH in the payer wallet.
 - For AWS KMS, an `ECC_SECG_P256K1` key with `SIGN_VERIFY` usage and
   `ECDSA_SHA_256` support.
 
@@ -71,7 +71,7 @@ const { url } = await startSignerSidecar({
   signer,
   host: '127.0.0.1',
   port: 8789,
-  authToken: process.env.STABLEOPS_SIDECAR_TOKEN,
+  authToken: process.env.STABLEOPS_SIDECAR_TOKEN!,
 })
 
 console.log(`Signer listening at ${url}`)
