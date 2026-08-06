@@ -18,8 +18,8 @@ export type VerifyExecutionGrantOptions = {
   publicKeys: Readonly<Record<string, GrantVerificationKey>>
   expected?: {
     environment?: StableOpsEnvironment
-    network?: `eip155:${number}`
-    walletAddress?: `0x${string}`
+    network?: ExecutionGrantClaims['network']
+    walletAddress?: string
   }
   now?: () => number
   clockToleranceSeconds?: number
@@ -123,15 +123,28 @@ function validateClaims(
   if (claims.environment !== 'SANDBOX' && claims.environment !== 'LIVE') {
     throw new InvalidGrantError('execution grant environment is invalid')
   }
-  if (!/^eip155:[1-9]\d*$/u.test(claims.network)) {
+  const transferMethod = claims.transferMethod ?? 'eip3009'
+  const evm = /^eip155:[1-9]\d*$/u.test(claims.network)
+  const svm = /^solana:[1-9A-HJ-NP-Za-km-z]+$/u.test(claims.network)
+  if (!evm && !svm) {
     throw new InvalidGrantError('execution grant network is invalid')
   }
-  if (
-    !isAddress(claims.walletAddress, { strict: false }) ||
-    !isAddress(claims.assetContract, { strict: false }) ||
-    !isAddress(claims.payTo, { strict: false })
-  ) {
+  if (evm && transferMethod !== 'eip3009' && transferMethod !== 'permit2') {
+    throw new InvalidGrantError('execution grant EVM transfer method is invalid')
+  }
+  if (svm && transferMethod !== 'svm') {
+    throw new InvalidGrantError('execution grant SVM transfer method is invalid')
+  }
+  if (evm && (!isAddress(claims.walletAddress) || !isAddress(claims.assetContract) || !isAddress(claims.payTo))) {
     throw new InvalidGrantError('execution grant contains an invalid EVM address')
+  }
+  if (
+    svm &&
+    ![claims.walletAddress, claims.assetContract, claims.payTo].every((value) =>
+      /^[1-9A-HJ-NP-Za-km-z]{32,44}$/u.test(value),
+    )
+  ) {
+    throw new InvalidGrantError('execution grant contains an invalid Solana address')
   }
   if (!/^[1-9]\d*$/u.test(claims.amountAtomic)) {
     throw new InvalidGrantError('execution grant amount must be a positive integer')
@@ -177,11 +190,13 @@ function validateClaims(
   if (expected?.network && claims.network !== expected.network) {
     throw new GrantBindingError('execution grant network does not match the signer')
   }
-  if (
-    expected?.walletAddress &&
-    getAddress(claims.walletAddress) !== getAddress(expected.walletAddress)
-  ) {
-    throw new GrantBindingError('execution grant wallet does not match the signer')
+  if (expected?.walletAddress) {
+    const matches = evm
+      ? getAddress(claims.walletAddress) === getAddress(expected.walletAddress)
+      : claims.walletAddress === expected.walletAddress
+    if (!matches) {
+      throw new GrantBindingError('execution grant wallet does not match the signer')
+    }
   }
 }
 

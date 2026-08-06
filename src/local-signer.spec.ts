@@ -29,8 +29,8 @@ describe('LocalTestSigner', () => {
     const [first, second] = await Promise.all([signer.sign(token), signer.sign(token)])
 
     expect(first).toEqual(second)
-    expect(first.authorization.from).toBe(signer.address)
-    expect(first.authorization.to).toBe(getBaseClaims().payTo)
+    expect(first.authorization?.from).toBe(signer.address)
+    expect(first.authorization?.to).toBe(getBaseClaims().payTo)
     expect(first.signature).toMatch(/^0x[0-9a-f]{130}$/u)
   })
 
@@ -50,6 +50,36 @@ describe('LocalTestSigner', () => {
     })
 
     await expect(signer.sign(fixture.sign(claims))).rejects.toBeInstanceOf(GrantBindingError)
+  })
+
+  it('在 BNB Smart Chain 测试网上生成 Permit2 付款载荷', async () => {
+    const fixture = createFixture()
+    const signer = new LocalTestSigner({
+      privateKey: TEST_PRIVATE_KEY,
+      network: 'eip155:97',
+      grantVerification: {
+        publicKeys: { [fixture.keyId]: fixture.publicKey },
+        now: () => TEST_NOW,
+      },
+      store: new MemoryGrantAuthorizationStore(),
+    })
+    const claims = createClaims({
+      walletAddress: signer.address,
+      network: 'eip155:97',
+      transferMethod: 'permit2',
+      assetContract: '0x64544969ed7EBf5f083679233325356EbE738930',
+      amountAtomic: '1000000000000000000',
+    })
+
+    const result = await signer.sign(fixture.sign(claims))
+
+    expect(result.payload).toHaveProperty('permit2Authorization')
+    expect(result.payload).toMatchObject({
+      permit2Authorization: {
+        from: signer.address,
+        permitted: { amount: '1000000000000000000' },
+      },
+    })
   })
 
   it('同一 grant ID 的不同声明返回冲突', async () => {

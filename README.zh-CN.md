@@ -12,7 +12,7 @@ StableOps Agent Signer 是由客户自行托管的签名器伴随服务，用于
 
 - 使用固定的 Ed25519 公钥验证紧凑 JWS 执行授权。
 - 完整绑定 EIP-3009 `TransferWithAuthorization` 的 EIP-712 字段。
-- 提供仅限 Base Sepolia 的本地私钥签名器，用于沙盒开发。
+- 提供 EVM 本地私钥签名器和 Solana Ed25519 本地签名器。
 - 支持使用 `ECC_SECG_P256K1` 非对称签名密钥的 AWS KMS 签名器。
 - 通过内存或本地文件提供幂等且防重放的执行授权存储。
 - 提供仅监听环回地址的 HTTP 伴随服务，可选用常量时间 Bearer 认证。
@@ -53,6 +53,8 @@ import {
 
 const signer = new LocalTestSigner({
   privateKey: process.env.BASE_SEPOLIA_TEST_PRIVATE_KEY as `0x${string}`,
+  environment: 'SANDBOX',
+  network: 'eip155:84532',
   grantVerification: {
     publicKeys: {
       [process.env.STABLEOPS_GRANT_KEY_ID!]: process.env.STABLEOPS_GRANT_PUBLIC_KEY!,
@@ -105,7 +107,7 @@ const signer = await AwsKmsSigner.create({
 
 不要把伴随服务直接暴露到公网。应使其仅监听环回地址，或部署在经过认证的私有传输层之后；使用高熵伴随服务令牌，并持久化执行授权记录，以便在进程重启后继续防止重放。
 
-`LocalTestSigner` 和 `AwsKmsSigner` 当前都只接受沙盒环境的 Base Sepolia 执行授权。本地私钥签名器拒绝正式环境和主网执行授权。AWS KMS 适配器不代表主网已经开放；真实资金操作仍受 StableOps 主网上线要求约束。
+`LocalTestSigner` 和 `AwsKmsSigner` 会把每份执行授权绑定到配置的 EVM 环境和网络，`LocalSvmSigner` 用于 Solana。沙盒只能使用测试网，正式环境只能使用主网；真实资金操作仍受 StableOps 组织风控门禁约束。
 
 ## 许可证
 

@@ -22,6 +22,7 @@ import { verifyExecutionGrant, type VerifyExecutionGrantOptions } from './grant'
 import { assertGrantTypedDataHash } from './typed-data'
 import {
   BASE_SEPOLIA_NETWORK,
+  type StableOpsEnvironment,
   type ExecutionGrantSigner,
   type GrantAuthorizationStore,
   type SignAuthorizationResult,
@@ -39,6 +40,8 @@ export interface KmsSigningClient {
 export type AwsKmsSignerOptions = {
   keyId: string
   walletAddress: `0x${string}`
+  environment?: StableOpsEnvironment
+  network?: `eip155:${number}`
   grantVerification: Omit<VerifyExecutionGrantOptions, 'expected'>
   store: GrantAuthorizationStore
   client?: KmsSigningClient
@@ -79,8 +82,8 @@ export class AwsKmsSigner implements ExecutionGrantSigner {
     const verified = verifyExecutionGrant(grantToken, {
       ...this.options.grantVerification,
       expected: {
-        environment: 'SANDBOX',
-        network: BASE_SEPOLIA_NETWORK,
+        environment: this.options.environment ?? 'SANDBOX',
+        network: this.options.network ?? BASE_SEPOLIA_NETWORK,
         walletAddress: this.address,
       },
     })
@@ -105,6 +108,9 @@ export class AwsKmsSigner implements ExecutionGrantSigner {
     verified: ReturnType<typeof verifyExecutionGrant>,
   ): Promise<SignAuthorizationResult> {
     const claims = verified.claims
+    if (claims.transferMethod === 'svm') {
+      throw new GrantBindingError('AwsKmsSigner only supports EVM execution grants')
+    }
     const typedDataHash = assertGrantTypedDataHash(claims)
     const response = await this.client.send(
       new SignCommand({
@@ -122,19 +128,38 @@ export class AwsKmsSigner implements ExecutionGrantSigner {
       response.Signature,
       this.address,
     )
+    const authorization = {
+      from: getAddress(claims.walletAddress),
+      to: getAddress(claims.payTo),
+      value: claims.amountAtomic,
+      validAfter: claims.validAfter,
+      validBefore: claims.validBefore,
+      nonce: claims.nonce,
+    }
+    const payload =
+      claims.transferMethod === 'permit2'
+        ? {
+            signature,
+            permit2Authorization: {
+              from: getAddress(claims.walletAddress),
+              permitted: {
+                token: getAddress(claims.assetContract),
+                amount: claims.amountAtomic,
+              },
+              spender: '0x402085c248EeA27D92E8b30b2C58ed07f9E20001' as const,
+              nonce: claims.nonce,
+              deadline: claims.validBefore,
+              witness: { to: getAddress(claims.payTo), validAfter: claims.validAfter },
+            },
+          }
+        : { authorization, signature }
     const result: SignAuthorizationResult = {
       grantId: claims.grantId,
       authorizationId: claims.authorizationId,
       walletAddress: this.address,
       typedDataHash,
-      authorization: {
-        from: getAddress(claims.walletAddress),
-        to: getAddress(claims.payTo),
-        value: claims.amountAtomic,
-        validAfter: claims.validAfter,
-        validBefore: claims.validBefore,
-        nonce: claims.nonce,
-      },
+      payload,
+      ...(claims.transferMethod === 'permit2' ? {} : { authorization }),
       signature,
     }
     await this.options.store.put({

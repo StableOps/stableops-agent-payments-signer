@@ -1,4 +1,13 @@
-import { getAddress, hashTypedData, type Address, type Hex, type TypedDataDefinition } from 'viem'
+import { PERMIT2_ADDRESS, permit2WitnessTypes, x402ExactPermit2ProxyAddress } from '@x402/evm'
+import {
+  getAddress,
+  hashTypedData,
+  keccak256,
+  stringToHex,
+  type Address,
+  type Hex,
+  type TypedDataDefinition,
+} from 'viem'
 
 import { GrantBindingError } from './errors'
 import type { ExecutionGrantClaims } from './types'
@@ -45,6 +54,23 @@ export function buildTransferWithAuthorizationTypedData(
 }
 
 export function hashGrantTypedData(claims: ExecutionGrantClaims): Hex {
+  if (claims.transferMethod === 'svm') {
+    return keccak256(
+      stringToHex(
+        JSON.stringify({
+          network: claims.network,
+          walletAddress: claims.walletAddress,
+          assetContract: claims.assetContract,
+          payTo: claims.payTo,
+          amountAtomic: claims.amountAtomic,
+          requirementsExtra: claims.requirementsExtra,
+        }),
+      ),
+    )
+  }
+  if (claims.transferMethod === 'permit2') {
+    return hashTypedData(buildPermit2TypedData(claims))
+  }
   return hashTypedData(buildTransferWithAuthorizationTypedData(claims))
 }
 
@@ -61,6 +87,31 @@ export function normalizeGrantAddress(value: string): Address {
     return getAddress(value)
   } catch {
     throw new GrantBindingError('execution grant contains an invalid EVM address')
+  }
+}
+
+export function buildPermit2TypedData(claims: ExecutionGrantClaims) {
+  return {
+    domain: {
+      name: 'Permit2',
+      chainId: parseChainId(claims.network),
+      verifyingContract: PERMIT2_ADDRESS,
+    },
+    types: permit2WitnessTypes,
+    primaryType: 'PermitWitnessTransferFrom' as const,
+    message: {
+      permitted: {
+        token: getAddress(claims.assetContract),
+        amount: BigInt(claims.amountAtomic),
+      },
+      spender: x402ExactPermit2ProxyAddress,
+      nonce: BigInt(claims.nonce),
+      deadline: BigInt(claims.validBefore),
+      witness: {
+        to: getAddress(claims.payTo),
+        validAfter: BigInt(claims.validAfter),
+      },
+    },
   }
 }
 

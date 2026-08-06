@@ -1,11 +1,17 @@
-import { getAddress, recoverTypedDataAddress, type Hex } from 'viem'
+import { x402ExactPermit2ProxyAddress } from '@x402/evm'
+import { getAddress, recoverAddress, type Hex } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
 
 import { GrantBindingError, GrantReplayConflictError } from './errors'
 import { verifyExecutionGrant, type VerifyExecutionGrantOptions } from './grant'
-import { assertGrantTypedDataHash, buildTransferWithAuthorizationTypedData } from './typed-data'
+import {
+  assertGrantTypedDataHash,
+  buildPermit2TypedData,
+  buildTransferWithAuthorizationTypedData,
+} from './typed-data'
 import {
   BASE_SEPOLIA_NETWORK,
+  type StableOpsEnvironment,
   type ExecutionGrantSigner,
   type GrantAuthorizationStore,
   type SignAuthorizationResult,
@@ -13,6 +19,8 @@ import {
 
 export type LocalTestSignerOptions = {
   privateKey: Hex
+  environment?: StableOpsEnvironment
+  network?: `eip155:${number}`
   grantVerification: Omit<VerifyExecutionGrantOptions, 'expected'>
   store: GrantAuthorizationStore
 }
@@ -33,8 +41,8 @@ export class LocalTestSigner implements ExecutionGrantSigner {
     const verified = verifyExecutionGrant(grantToken, {
       ...this.options.grantVerification,
       expected: {
-        environment: 'SANDBOX',
-        network: BASE_SEPOLIA_NETWORK,
+        environment: this.options.environment ?? 'SANDBOX',
+        network: this.options.network ?? BASE_SEPOLIA_NETWORK,
         walletAddress: this.account.address,
       },
     })
@@ -61,24 +69,51 @@ export class LocalTestSigner implements ExecutionGrantSigner {
     verified: ReturnType<typeof verifyExecutionGrant>,
   ): Promise<SignAuthorizationResult> {
     const claims = verified.claims
-    const typedData = buildTransferWithAuthorizationTypedData(claims)
+    if (claims.transferMethod === 'svm') {
+      throw new GrantBindingError('LocalTestSigner only supports EVM execution grants')
+    }
     const typedDataHash = assertGrantTypedDataHash(claims)
-    const signature = await this.account.signTypedData(typedData)
-    await assertRecoveredAddress(this.account.address, typedData, signature)
+    const signature =
+      claims.transferMethod === 'permit2'
+        ? await this.account.signTypedData(buildPermit2TypedData(claims))
+        : await this.account.signTypedData(buildTransferWithAuthorizationTypedData(claims))
+    await assertRecoveredAddress(this.account.address, typedDataHash, signature)
 
+    const authorization = {
+      from: getAddress(claims.walletAddress),
+      to: getAddress(claims.payTo),
+      value: claims.amountAtomic,
+      validAfter: claims.validAfter,
+      validBefore: claims.validBefore,
+      nonce: claims.nonce,
+    }
+    const payload =
+      claims.transferMethod === 'permit2'
+        ? {
+            signature,
+            permit2Authorization: {
+              from: getAddress(claims.walletAddress),
+              permitted: {
+                token: getAddress(claims.assetContract),
+                amount: claims.amountAtomic,
+              },
+              spender: x402ExactPermit2ProxyAddress,
+              nonce: claims.nonce,
+              deadline: claims.validBefore,
+              witness: {
+                to: getAddress(claims.payTo),
+                validAfter: claims.validAfter,
+              },
+            },
+          }
+        : { authorization, signature }
     const result: SignAuthorizationResult = {
       grantId: claims.grantId,
       authorizationId: claims.authorizationId,
       walletAddress: this.account.address,
       typedDataHash,
-      authorization: {
-        from: getAddress(claims.walletAddress),
-        to: getAddress(claims.payTo),
-        value: claims.amountAtomic,
-        validAfter: claims.validAfter,
-        validBefore: claims.validBefore,
-        nonce: claims.nonce,
-      },
+      payload,
+      ...(claims.transferMethod === 'permit2' ? {} : { authorization }),
       signature,
     }
     await this.options.store.put({
@@ -91,13 +126,10 @@ export class LocalTestSigner implements ExecutionGrantSigner {
 
 async function assertRecoveredAddress(
   expected: `0x${string}`,
-  typedData: ReturnType<typeof buildTransferWithAuthorizationTypedData>,
+  hash: Hex,
   signature: Hex,
 ): Promise<void> {
-  const recovered = await recoverTypedDataAddress({
-    ...typedData,
-    signature,
-  })
+  const recovered = await recoverAddress({ hash, signature })
   if (getAddress(recovered) !== getAddress(expected)) {
     throw new GrantBindingError('generated signature does not recover to the configured wallet')
   }

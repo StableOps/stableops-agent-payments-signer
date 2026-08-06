@@ -16,8 +16,8 @@ that authorizes an agent to use that wallet.
 ## Features
 
 - Compact JWS execution-grant verification with pinned Ed25519 public keys.
-- Complete EIP-712 binding for EIP-3009 `TransferWithAuthorization`.
-- Base Sepolia-only local private-key signer for Sandbox development.
+- Complete EIP-712 binding for EIP-3009 and Permit2 payments.
+- EVM local private-key signer and Solana Ed25519 local signer.
 - AWS KMS signer for `ECC_SECG_P256K1` asymmetric signing keys.
 - Idempotent and replay-safe grant storage in memory or a local file.
 - Loopback HTTP sidecar with optional constant-time bearer authentication.
@@ -59,6 +59,8 @@ import {
 
 const signer = new LocalTestSigner({
   privateKey: process.env.BASE_SEPOLIA_TEST_PRIVATE_KEY as `0x${string}`,
+  environment: 'SANDBOX',
+  network: 'eip155:84532',
   grantVerification: {
     publicKeys: {
       [process.env.STABLEOPS_GRANT_KEY_ID!]: process.env.STABLEOPS_GRANT_PUBLIC_KEY!,
@@ -118,10 +120,10 @@ Do not expose the sidecar directly to the public internet. Keep it on loopback o
 behind an authenticated private transport, use a high-entropy sidecar token, and
 persist grant authorizations to preserve replay protection across restarts.
 
-Both `LocalTestSigner` and `AwsKmsSigner` currently accept Sandbox, Base Sepolia
-grants only. The local private-key signer rejects Live and Mainnet grants. The AWS
-KMS adapter does not enable Mainnet; real-fund operation remains gated by the
-StableOps Mainnet launch requirements.
+`LocalTestSigner` and `AwsKmsSigner` bind every grant to their configured EVM
+environment and network. `LocalSvmSigner` handles Solana. Sandbox accepts test
+networks only and Live accepts mainnets only; real-fund operation remains gated
+by the StableOps organization risk controls.
 
 ## License
 

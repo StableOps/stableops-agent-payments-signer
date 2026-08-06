@@ -1,3 +1,4 @@
+import type { ExactEvmPayloadV2 } from '@x402/evm'
 import type { Hex } from 'viem'
 
 export const BASE_SEPOLIA_NETWORK = 'eip155:84532' as const
@@ -16,19 +17,21 @@ export type ExecutionGrantClaims = {
   intentId: string
   authorizationId: string
   walletId: string
-  walletAddress: `0x${string}`
+  walletAddress: string
   x402Version: 2
   scheme: 'exact'
-  network: `eip155:${number}`
-  assetContract: `0x${string}`
+  network: `eip155:${number}` | `solana:${string}`
+  transferMethod?: 'eip3009' | 'permit2' | 'svm'
+  assetContract: string
   tokenName: string
   tokenVersion: string
-  payTo: `0x${string}`
+  payTo: string
   amountAtomic: string
   validAfter: string
   validBefore: string
   nonce: Hex
   typedDataHash: Hex
+  requirementsExtra?: Record<string, unknown>
   issuedAt: number
   expiresAt: number
 }
@@ -49,9 +52,10 @@ export type VerifiedExecutionGrant = {
 export type SignAuthorizationResult = {
   grantId: string
   authorizationId: string
-  walletAddress: `0x${string}`
+  walletAddress: string
   typedDataHash: Hex
-  authorization: {
+  payload: ExactEvmPayloadV2 | { transaction: string }
+  authorization?: {
     from: `0x${string}`
     to: `0x${string}`
     value: string
@@ -59,7 +63,7 @@ export type SignAuthorizationResult = {
     validBefore: string
     nonce: Hex
   }
-  signature: Hex
+  signature?: string
 }
 
 export type StoredGrantAuthorization = SignAuthorizationResult & {
