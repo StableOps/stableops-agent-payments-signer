@@ -12,6 +12,10 @@
     "usdc"
   ],
   "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/StableOps/stableops-agent-signer.git"
+  },
   "homepage": "https://stableops.dev",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
