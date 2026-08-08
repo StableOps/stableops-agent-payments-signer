@@ -57,13 +57,19 @@ import {
   startSignerSidecar,
 } from '@stableops/agent-signer'
 
+function required(name: string): string {
+  const value = process.env[name]?.trim()
+  if (!value) throw new Error(`Missing environment variable ${name}`)
+  return value
+}
+
 const signer = new LocalTestSigner({
-  privateKey: process.env.BASE_SEPOLIA_TEST_PRIVATE_KEY as `0x${string}`,
+  privateKey: required('BASE_SEPOLIA_TEST_PRIVATE_KEY') as `0x${string}`,
   environment: 'SANDBOX',
   network: 'eip155:84532',
   grantVerification: {
     publicKeys: {
-      [process.env.STABLEOPS_GRANT_KEY_ID!]: process.env.STABLEOPS_GRANT_PUBLIC_KEY!,
+      [required('STABLEOPS_GRANT_KEY_ID')]: required('STABLEOPS_GRANT_PUBLIC_KEY'),
     },
   },
   store: new FileGrantAuthorizationStore('./data/grant-authorizations.json'),
@@ -73,7 +79,7 @@ const { url } = await startSignerSidecar({
   signer,
   host: '127.0.0.1',
   port: 8789,
-  authToken: process.env.STABLEOPS_SIDECAR_TOKEN!,
+  authToken: required('STABLEOPS_SIDECAR_TOKEN'),
 })
 
 console.log(`Signer listening at ${url}`)
@@ -88,15 +94,21 @@ For a managed key, create and validate an AWS KMS-backed signer:
 ```ts
 import { AwsKmsSigner, FileGrantAuthorizationStore } from '@stableops/agent-signer'
 
+function required(name: string): string {
+  const value = process.env[name]?.trim()
+  if (!value) throw new Error(`Missing environment variable ${name}`)
+  return value
+}
+
 const signer = await AwsKmsSigner.create({
-  keyId: process.env.STABLEOPS_KMS_KEY_ID!,
-  walletAddress: process.env.STABLEOPS_WALLET_ADDRESS as `0x${string}`,
+  keyId: required('STABLEOPS_KMS_KEY_ID'),
+  walletAddress: required('STABLEOPS_WALLET_ADDRESS') as `0x${string}`,
   environment: 'LIVE',
   network: 'eip155:8453',
   clientConfig: { region: process.env.AWS_REGION },
   grantVerification: {
     publicKeys: {
-      [process.env.STABLEOPS_GRANT_KEY_ID!]: process.env.STABLEOPS_GRANT_PUBLIC_KEY!,
+      [required('STABLEOPS_GRANT_KEY_ID')]: required('STABLEOPS_GRANT_PUBLIC_KEY'),
     },
   },
   store: new FileGrantAuthorizationStore('./data/grant-authorizations.json'),
@@ -122,8 +134,8 @@ Agent Payments flow, see the official documentation:
 
 ## Security and Current Support
 
-Do not expose the sidecar directly to the public internet. Keep it on loopback or
-behind an authenticated private transport, use a high-entropy sidecar token, and
+Do not expose the sidecar directly to the public internet. Keep it on loopback,
+use a high-entropy sidecar token, and
 persist grant authorizations to preserve replay protection across restarts.
 
 `LocalTestSigner` and `AwsKmsSigner` bind every grant to their configured EVM

@@ -51,13 +51,19 @@ import {
   startSignerSidecar,
 } from '@stableops/agent-signer'
 
+function required(name: string): string {
+  const value = process.env[name]?.trim()
+  if (!value) throw new Error(`缺少环境变量 ${name}`)
+  return value
+}
+
 const signer = new LocalTestSigner({
-  privateKey: process.env.BASE_SEPOLIA_TEST_PRIVATE_KEY as `0x${string}`,
+  privateKey: required('BASE_SEPOLIA_TEST_PRIVATE_KEY') as `0x${string}`,
   environment: 'SANDBOX',
   network: 'eip155:84532',
   grantVerification: {
     publicKeys: {
-      [process.env.STABLEOPS_GRANT_KEY_ID!]: process.env.STABLEOPS_GRANT_PUBLIC_KEY!,
+      [required('STABLEOPS_GRANT_KEY_ID')]: required('STABLEOPS_GRANT_PUBLIC_KEY'),
     },
   },
   store: new FileGrantAuthorizationStore('./data/grant-authorizations.json'),
@@ -67,7 +73,7 @@ const { url } = await startSignerSidecar({
   signer,
   host: '127.0.0.1',
   port: 8789,
-  authToken: process.env.STABLEOPS_SIDECAR_TOKEN!,
+  authToken: required('STABLEOPS_SIDECAR_TOKEN'),
 })
 
 console.log(`签名器正在监听 ${url}`)
@@ -80,15 +86,21 @@ console.log(`签名器正在监听 ${url}`)
 ```ts
 import { AwsKmsSigner, FileGrantAuthorizationStore } from '@stableops/agent-signer'
 
+function required(name: string): string {
+  const value = process.env[name]?.trim()
+  if (!value) throw new Error(`缺少环境变量 ${name}`)
+  return value
+}
+
 const signer = await AwsKmsSigner.create({
-  keyId: process.env.STABLEOPS_KMS_KEY_ID!,
-  walletAddress: process.env.STABLEOPS_WALLET_ADDRESS as `0x${string}`,
+  keyId: required('STABLEOPS_KMS_KEY_ID'),
+  walletAddress: required('STABLEOPS_WALLET_ADDRESS') as `0x${string}`,
   environment: 'LIVE',
   network: 'eip155:8453',
   clientConfig: { region: process.env.AWS_REGION },
   grantVerification: {
     publicKeys: {
-      [process.env.STABLEOPS_GRANT_KEY_ID!]: process.env.STABLEOPS_GRANT_PUBLIC_KEY!,
+      [required('STABLEOPS_GRANT_KEY_ID')]: required('STABLEOPS_GRANT_PUBLIC_KEY'),
     },
   },
   store: new FileGrantAuthorizationStore('./data/grant-authorizations.json'),
@@ -109,7 +121,7 @@ const signer = await AwsKmsSigner.create({
 
 ## 安全和当前支持范围
 
-不要把伴随服务直接暴露到公网。应使其仅监听环回地址，或部署在经过认证的私有传输层之后；使用高熵伴随服务令牌，并持久化执行授权记录，以便在进程重启后继续防止重放。
+不要把伴随服务直接暴露到公网。应使其仅监听环回地址，使用高熵伴随服务令牌，并持久化执行授权记录，以便在进程重启后继续防止重放。
 
 `LocalTestSigner` 和 `AwsKmsSigner` 会把每份执行授权绑定到配置的 EVM 环境和网络，`LocalSvmSigner` 用于 Solana。沙盒只能使用测试网，正式环境只能使用主网；真实资金操作仍受 StableOps 组织风控门禁约束。
 
