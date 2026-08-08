@@ -91,6 +91,8 @@ import { AwsKmsSigner, FileGrantAuthorizationStore } from '@stableops/agent-sign
 const signer = await AwsKmsSigner.create({
   keyId: process.env.STABLEOPS_KMS_KEY_ID!,
   walletAddress: process.env.STABLEOPS_WALLET_ADDRESS as `0x${string}`,
+  environment: 'LIVE',
+  network: 'eip155:8453',
   clientConfig: { region: process.env.AWS_REGION },
   grantVerification: {
     publicKeys: {
@@ -104,6 +106,10 @@ const signer = await AwsKmsSigner.create({
 At startup, `AwsKmsSigner.create()` retrieves the KMS public key and verifies that
 its EVM address matches `walletAddress`. It signs only the validated EIP-712 digest
 using `MessageType: DIGEST` and `ECDSA_SHA_256`.
+
+Always set `environment` and `network` explicitly outside the Base Sepolia sandbox.
+Use a separate signer instance, wallet, and authorization store for each network.
+`AwsKmsSigner` supports EVM networks only; use `LocalSvmSigner` for Solana.
 
 ## Documentation
 
