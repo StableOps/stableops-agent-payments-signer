@@ -103,6 +103,10 @@ export class RedisGrantAuthorizationStore implements GrantAuthorizationStore {
   }
 
   async put(value: StoredGrantAuthorization): Promise<void> {
+    await this.putCanonical(value)
+  }
+
+  private async putCanonical(value: StoredGrantAuthorization): Promise<StoredGrantAuthorization> {
     const raw = JSON.stringify(value)
     const existing = await this.options.client.sendCommand([
       'EVAL',
@@ -113,8 +117,12 @@ export class RedisGrantAuthorizationStore implements GrantAuthorizationStore {
       String(this.resultTtlMs),
     ])
     if (typeof existing === 'string' && existing.length > 0) {
-      assertSameGrant(parseStoredAuthorization(existing, value.grantId), value.grantTokenHash)
+      const canonical = parseStoredAuthorization(existing, value.grantId)
+      assertSameGrant(canonical, value.grantTokenHash)
+      return canonical
     }
+    if (existing !== '') throw new Error('Redis authorization result write returned invalid data')
+    return value
   }
 
   async getOrCreate(
@@ -140,6 +148,7 @@ export class RedisGrantAuthorizationStore implements GrantAuthorizationStore {
         String(this.lockTtlMs),
       ])
       if (acquired === 'OK') {
+        const renewal = this.renewLock(grantId, lockToken)
         try {
           const afterLock = await this.get(grantId)
           if (afterLock) {
@@ -150,9 +159,10 @@ export class RedisGrantAuthorizationStore implements GrantAuthorizationStore {
           if (created.grantId !== grantId || created.grantTokenHash !== grantTokenHash) {
             throw new Error('created authorization does not match the claimed grant')
           }
-          await this.put(created)
-          return created
+          return await this.putCanonical(created)
         } finally {
+          renewal.stop()
+          await renewal.done
           await this.releaseLock(grantId, lockToken)
         }
       }
@@ -182,6 +192,33 @@ export class RedisGrantAuthorizationStore implements GrantAuthorizationStore {
       token,
     ])
   }
+
+  private renewLock(grantId: string, token: string): { stop: () => void; done: Promise<void> } {
+    let stop!: () => void
+    const stopped = new Promise<void>((resolve) => {
+      stop = resolve
+    })
+    const intervalMs = Math.max(1, Math.floor(this.lockTtlMs / 3))
+    const done = (async () => {
+      while (await waitForRenewal(intervalMs, stopped)) {
+        try {
+          const renewed = await this.options.client.sendCommand([
+            'EVAL',
+            "if redis.call('GET',KEYS[1]) == ARGV[1] then return redis.call('PEXPIRE',KEYS[1],ARGV[2]) else return 0 end",
+            '1',
+            this.lockKey(grantId),
+            token,
+            String(this.lockTtlMs),
+          ])
+          if (renewed !== 1) return
+        } catch {
+          // Redis 短暂故障时租约可能丢失；最终仍以原子写入选出的规范结果为准。
+          return
+        }
+      }
+    })()
+    return { stop, done }
+  }
 }
 
 function parseStoredAuthorization(raw: string, grantId: string): StoredGrantAuthorization {
@@ -208,4 +245,8 @@ function assertSameGrant(value: StoredGrantAuthorization, grantTokenHash: string
 
 function delay(milliseconds: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, milliseconds))
+}
+
+async function waitForRenewal(milliseconds: number, stopped: Promise<void>): Promise<boolean> {
+  return Promise.race([delay(milliseconds).then(() => true), stopped.then(() => false)])
 }
