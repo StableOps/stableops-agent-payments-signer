@@ -47,6 +47,18 @@ export class LocalTestSigner implements ExecutionGrantSigner {
       },
     })
 
+    if (this.options.store.getOrCreate) {
+      const stored = await this.options.store.getOrCreate(
+        verified.claims.grantId,
+        verified.tokenHash,
+        async () => ({
+          ...(await this.signVerifiedGrant(verified, false)),
+          grantTokenHash: verified.tokenHash,
+        }),
+      )
+      return stripStoredFields(stored)
+    }
+
     const existing = await this.options.store.get(verified.claims.grantId)
     if (existing) {
       if (existing.grantTokenHash !== verified.tokenHash) {
@@ -67,6 +79,7 @@ export class LocalTestSigner implements ExecutionGrantSigner {
 
   private async signVerifiedGrant(
     verified: ReturnType<typeof verifyExecutionGrant>,
+    persist = true,
   ): Promise<SignAuthorizationResult> {
     const claims = verified.claims
     if (claims.transferMethod === 'svm') {
@@ -116,10 +129,12 @@ export class LocalTestSigner implements ExecutionGrantSigner {
       ...(claims.transferMethod === 'permit2' ? {} : { authorization }),
       signature,
     }
-    await this.options.store.put({
-      ...result,
-      grantTokenHash: verified.tokenHash,
-    })
+    if (persist) {
+      await this.options.store.put({
+        ...result,
+        grantTokenHash: verified.tokenHash,
+      })
+    }
     return result
   }
 }

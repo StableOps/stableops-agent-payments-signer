@@ -121,6 +121,12 @@ using `MessageType: DIGEST` and `ECDSA_SHA_256`.
 
 Always set `environment` and `network` explicitly outside the Base Sepolia sandbox.
 Use a separate signer instance, wallet, and authorization store for each network.
+
+For multiple production Sidecar replicas, use `RedisGrantAuthorizationStore` instead of the
+file store. It holds the full signing operation behind a Redis lease and atomically persists the
+result, so concurrent replicas return the same authorization. Supply a small adapter exposing
+`sendCommand(command: readonly string[])`; both node-redis and ioredis can be adapted without the
+signer package owning the Redis connection lifecycle.
 `AwsKmsSigner` supports EVM networks only; use `LocalSvmSigner` for Solana.
 
 ## Documentation

@@ -14,7 +14,7 @@ StableOps Agent Signer 是由客户自行托管的签名器伴随服务，用于
 - 完整绑定 EIP-3009 和 Permit2 付款的 EIP-712 字段。
 - 提供 EVM 本地私钥签名器和 Solana Ed25519 本地签名器。
 - 支持使用 `ECC_SECG_P256K1` 非对称签名密钥的 AWS KMS 签名器。
-- 通过内存或本地文件提供幂等且防重放的执行授权存储。
+- 通过内存、本地文件或 Redis 提供幂等且防重放的执行授权存储。
 - 提供仅监听环回地址的 HTTP 伴随服务，可选用常量时间 Bearer 认证。
 - 限制请求体大小，并避免错误响应泄露内部信息。
 - 同时输出 CJS、ESM 和 TypeScript 类型声明。
@@ -109,7 +109,11 @@ const signer = await AwsKmsSigner.create({
 
 启动时，`AwsKmsSigner.create()` 会获取 KMS 公钥，并验证其 EVM 地址与 `walletAddress` 一致。它只会使用 `MessageType: DIGEST` 和 `ECDSA_SHA_256` 签署通过验证的 EIP-712 摘要。
 
-除 Base Sepolia 沙盒外，必须显式设置 `environment` 和 `network`。每个网络使用独立的签名器实例、钱包和授权记录存储。`AwsKmsSigner` 仅支持 EVM 网络；Solana 使用 `LocalSvmSigner`。
+除 Base Sepolia 沙盒外，必须显式设置 `environment` 和 `network`。每个网络使用独立的签名器实例、钱包和授权记录存储。
+
+部署多个正式环境伴随服务副本时，应使用 `RedisGrantAuthorizationStore`，不要使用文件存储。它会通过 Redis 租约保护完整签名操作并原子保存结果，使并发副本返回相同的授权。调用方需要提供一个暴露 `sendCommand(command: readonly string[])` 的小型适配器；node-redis 和 ioredis 都可以接入，同时签名器包不负责管理 Redis 连接生命周期。
+
+`AwsKmsSigner` 仅支持 EVM 网络；Solana 使用 `LocalSvmSigner`。
 
 ## 官方文档
 

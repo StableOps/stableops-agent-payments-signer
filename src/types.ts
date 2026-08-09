@@ -54,6 +54,7 @@ export type SignAuthorizationResult = {
   authorizationId: string
   walletAddress: string
   typedDataHash: Hex
+  transactionHash?: string
   payload: ExactEvmPayloadV2 | { transaction: string }
   authorization?: {
     from: `0x${string}`
@@ -73,6 +74,11 @@ export type StoredGrantAuthorization = SignAuthorizationResult & {
 export interface GrantAuthorizationStore {
   get(grantId: string): Promise<StoredGrantAuthorization | null>
   put(value: StoredGrantAuthorization): Promise<void>
+  getOrCreate?(
+    grantId: string,
+    grantTokenHash: string,
+    create: () => Promise<StoredGrantAuthorization>,
+  ): Promise<StoredGrantAuthorization>
 }
 
 export interface ExecutionGrantSigner {

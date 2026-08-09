@@ -5,6 +5,7 @@ import { ExactSvmScheme, toClientSvmSigner } from '@x402/svm'
 import { GrantBindingError, GrantReplayConflictError } from './errors'
 import { verifyExecutionGrant, type VerifyExecutionGrantOptions } from './grant'
 import { assertGrantTypedDataHash } from './typed-data'
+import { extractSvmTransactionSignature } from './svm-transaction'
 import type {
   ExecutionGrantSigner,
   GrantAuthorizationStore,
@@ -51,6 +52,17 @@ export class LocalSvmSigner implements ExecutionGrantSigner {
     if (verified.claims.transferMethod !== 'svm') {
       throw new GrantBindingError('LocalSvmSigner only accepts SVM execution grants')
     }
+    if (this.options.store.getOrCreate) {
+      const stored = await this.options.store.getOrCreate(
+        verified.claims.grantId,
+        verified.tokenHash,
+        async () => ({
+          ...(await this.signVerifiedGrant(verified, false)),
+          grantTokenHash: verified.tokenHash,
+        }),
+      )
+      return stripStoredFields(stored)
+    }
     const existing = await this.options.store.get(verified.claims.grantId)
     if (existing) {
       if (existing.grantTokenHash !== verified.tokenHash) throw new GrantReplayConflictError()
@@ -67,6 +79,7 @@ export class LocalSvmSigner implements ExecutionGrantSigner {
 
   private async signVerifiedGrant(
     verified: ReturnType<typeof verifyExecutionGrant>,
+    persist = true,
   ): Promise<SignAuthorizationResult> {
     const claims = verified.claims
     const typedDataHash = assertGrantTypedDataHash(claims)
@@ -88,8 +101,11 @@ export class LocalSvmSigner implements ExecutionGrantSigner {
       walletAddress: this.signer.address,
       typedDataHash,
       payload,
+      transactionHash: extractSvmTransactionSignature(payload.transaction),
     }
-    await this.options.store.put({ ...result, grantTokenHash: verified.tokenHash })
+    if (persist) {
+      await this.options.store.put({ ...result, grantTokenHash: verified.tokenHash })
+    }
     return result
   }
 }
