@@ -104,6 +104,51 @@ describe('LocalTestSigner', () => {
     )
   })
 
+  it('并发处理相同 grant ID 的不同声明时立即返回冲突', async () => {
+    const fixture = createFixture()
+    const signer = new LocalTestSigner({
+      privateKey: TEST_PRIVATE_KEY,
+      grantVerification: {
+        publicKeys: { [fixture.keyId]: fixture.publicKey },
+        now: () => TEST_NOW,
+      },
+      store: new MemoryGrantAuthorizationStore(),
+    })
+    const first = fixture.sign(createClaims({ walletAddress: signer.address }))
+    const second = fixture.sign(
+      createClaims({ walletAddress: signer.address, amountAtomic: '20001' }),
+    )
+
+    const results = await Promise.allSettled([signer.sign(first), signer.sign(second)])
+
+    expect(results.filter((result) => result.status === 'fulfilled')).toHaveLength(1)
+    const rejected = results.find((result) => result.status === 'rejected')
+    expect(rejected).toMatchObject({ reason: expect.any(GrantReplayConflictError) })
+  })
+
+  it('调用方修改签名结果不会污染内存存储中的规范结果', async () => {
+    const fixture = createFixture()
+    const signer = new LocalTestSigner({
+      privateKey: TEST_PRIVATE_KEY,
+      grantVerification: {
+        publicKeys: { [fixture.keyId]: fixture.publicKey },
+        now: () => TEST_NOW,
+      },
+      store: new MemoryGrantAuthorizationStore(),
+    })
+    const token = fixture.sign(createClaims({ walletAddress: signer.address }))
+
+    const first = await signer.sign(token)
+    if (!('authorization' in first.payload)) throw new Error('缺少 EIP-3009 授权')
+    first.payload.authorization.value = '999'
+    if (first.authorization) first.authorization.value = '999'
+
+    const second = await signer.sign(token)
+
+    expect(second.authorization?.value).toBe('20000')
+    expect('authorization' in second.payload && second.payload.authorization.value).toBe('20000')
+  })
+
   it('拒绝过期 Grant', () => {
     const fixture = createFixture()
     const claims = createClaims({ expiresAt: 1_700_000_010 })

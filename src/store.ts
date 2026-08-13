@@ -9,11 +9,12 @@ export class MemoryGrantAuthorizationStore implements GrantAuthorizationStore {
   private readonly values = new Map<string, StoredGrantAuthorization>()
 
   async get(grantId: string): Promise<StoredGrantAuthorization | null> {
-    return this.values.get(grantId) ?? null
+    const value = this.values.get(grantId)
+    return value ? structuredClone(value) : null
   }
 
   async put(value: StoredGrantAuthorization): Promise<void> {
-    this.values.set(value.grantId, value)
+    this.values.set(value.grantId, structuredClone(value))
   }
 }
 

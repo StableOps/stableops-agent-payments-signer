@@ -23,7 +23,10 @@ export type LocalSvmSignerOptions = {
 }
 
 export class LocalSvmSigner implements ExecutionGrantSigner {
-  private readonly inFlight = new Map<string, Promise<SignAuthorizationResult>>()
+  private readonly inFlight = new Map<
+    string,
+    { grantTokenHash: string; result: Promise<SignAuthorizationResult> }
+  >()
 
   private constructor(
     private readonly options: LocalSvmSignerOptions,
@@ -69,11 +72,19 @@ export class LocalSvmSigner implements ExecutionGrantSigner {
       return stripStoredFields(existing)
     }
     const pending = this.inFlight.get(verified.claims.grantId)
-    if (pending) return pending
+    if (pending) {
+      if (pending.grantTokenHash !== verified.tokenHash) {
+        throw new GrantReplayConflictError()
+      }
+      return pending.result
+    }
     const signing = this.signVerifiedGrant(verified).finally(() => {
       this.inFlight.delete(verified.claims.grantId)
     })
-    this.inFlight.set(verified.claims.grantId, signing)
+    this.inFlight.set(verified.claims.grantId, {
+      grantTokenHash: verified.tokenHash,
+      result: signing,
+    })
     return signing
   }
 
