@@ -1,6 +1,6 @@
 {
   "name": "@stableops/agent-signer",
-  "version": "0.3.4",
+  "version": "0.3.5",
   "private": false,
   "description": "StableOps x402 execution grant verifier and customer-controlled signing sidecar.",
   "keywords": [
