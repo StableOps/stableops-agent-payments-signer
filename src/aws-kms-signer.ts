@@ -6,6 +6,7 @@ import {
   type KMSClientConfig,
   type SignCommandOutput,
 } from '@aws-sdk/client-kms'
+import { x402ExactPermit2ProxyAddress } from '@x402/evm'
 import { createPublicKey } from 'node:crypto'
 import {
   concatHex,
@@ -169,7 +170,7 @@ export class AwsKmsSigner implements ExecutionGrantSigner {
                 token: getAddress(claims.assetContract),
                 amount: claims.amountAtomic,
               },
-              spender: '0x402085c248EeA27D92E8b30b2C58ed07f9E20001' as const,
+              spender: x402ExactPermit2ProxyAddress,
               nonce: claims.nonce,
               deadline: claims.validBefore,
               witness: { to: getAddress(claims.payTo), validAfter: claims.validAfter },

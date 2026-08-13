@@ -1,4 +1,5 @@
 import { GetPublicKeyCommand, SignCommand } from '@aws-sdk/client-kms'
+import { x402ExactPermit2ProxyAddress } from '@x402/evm'
 import { generateKeyPairSync } from 'node:crypto'
 import { bytesToHex, hexToBytes } from 'viem'
 import { privateKeyToAccount, sign } from 'viem/accounts'
@@ -92,6 +93,60 @@ describe('AwsKmsSigner', () => {
         store: new MemoryGrantAuthorizationStore(),
       }),
     ).rejects.toBeInstanceOf(GrantBindingError)
+  })
+
+  it('Permit2 付款载荷使用 x402 库导出的代理地址', async () => {
+    const account = privateKeyToAccount(TEST_PRIVATE_KEY)
+    const fixture = createGrantFixture()
+    const client = {
+      send: vi.fn(async (command: GetPublicKeyCommand | SignCommand) => {
+        if (command instanceof GetPublicKeyCommand) {
+          return {
+            KeySpec: 'ECC_SECG_P256K1',
+            KeyUsage: 'SIGN_VERIFY',
+            SigningAlgorithms: ['ECDSA_SHA_256'],
+            PublicKey: subjectPublicKeyInfo(account.publicKey),
+          }
+        }
+        const signature = await sign({
+          hash: bytesToHex(command.input.Message!),
+          privateKey: TEST_PRIVATE_KEY,
+        })
+        return {
+          KeyId: 'kms-key-1',
+          SigningAlgorithm: 'ECDSA_SHA_256',
+          Signature: derSignature(signature.r, signature.s),
+        }
+      }),
+    } as unknown as KmsSigningClient
+    const signer = await AwsKmsSigner.create({
+      keyId: 'kms-key-1',
+      walletAddress: account.address,
+      network: 'eip155:97',
+      client,
+      grantVerification: {
+        publicKeys: { [fixture.keyId]: fixture.publicKey },
+        now: () => TEST_NOW,
+      },
+      store: new MemoryGrantAuthorizationStore(),
+    })
+    const token = fixture.sign(
+      createClaims({
+        walletAddress: account.address,
+        network: 'eip155:97',
+        transferMethod: 'permit2',
+        assetContract: '0x64544969ed7EBf5f083679233325356EbE738930',
+        amountAtomic: '1000000000000000000',
+      }),
+    )
+
+    const result = await signer.sign(token)
+
+    expect(result.payload).toMatchObject({
+      permit2Authorization: {
+        spender: x402ExactPermit2ProxyAddress,
+      },
+    })
   })
 
   it('拒绝非规范 DER，并把高 s 规范化为低 s', () => {
