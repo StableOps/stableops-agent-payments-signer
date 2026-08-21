@@ -1,6 +1,6 @@
-# StableOps Agent Signer
+# StableOps Agent Payments Signer
 
-[![npm version](https://img.shields.io/npm/v/@stableops/agent-signer)](https://www.npmjs.com/package/@stableops/agent-signer) [![npm downloads](https://img.shields.io/npm/dm/@stableops/agent-signer)](https://www.npmjs.com/package/@stableops/agent-signer) [![License](https://img.shields.io/npm/l/@stableops/agent-signer)](https://www.npmjs.com/package/@stableops/agent-signer) [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue)](https://www.typescriptlang.org) [![Node](https://img.shields.io/badge/Node-%3E%3D20-339933)](https://nodejs.org)
+[![npm version](https://img.shields.io/npm/v/@stableops/agent-payments-signer)](https://www.npmjs.com/package/@stableops/agent-payments-signer) [![npm downloads](https://img.shields.io/npm/dm/@stableops/agent-payments-signer)](https://www.npmjs.com/package/@stableops/agent-payments-signer) [![License](https://img.shields.io/npm/l/@stableops/agent-payments-signer)](https://www.npmjs.com/package/@stableops/agent-payments-signer) [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue)](https://www.typescriptlang.org) [![Node](https://img.shields.io/badge/Node-%3E%3D20-339933)](https://nodejs.org)
 
 [中文文档](./README.zh-CN.md)
 
@@ -35,15 +35,15 @@ that authorizes an agent to use that wallet.
 ## Installation
 
 ```bash
-pnpm add @stableops/agent-signer
+pnpm add @stableops/agent-payments-signer
 ```
 
 ```bash
-npm install @stableops/agent-signer
+npm install @stableops/agent-payments-signer
 ```
 
 ```bash
-yarn add @stableops/agent-signer
+yarn add @stableops/agent-payments-signer
 ```
 
 ## Quick Start
@@ -55,7 +55,7 @@ import {
   FileGrantAuthorizationStore,
   LocalTestSigner,
   startSignerSidecar,
-} from '@stableops/agent-signer'
+} from '@stableops/agent-payments-signer'
 
 function required(name: string): string {
   const value = process.env[name]?.trim()
@@ -85,14 +85,14 @@ const { url } = await startSignerSidecar({
 console.log(`Signer listening at ${url}`)
 ```
 
-Configure `@stableops/agent-sdk` to call this loopback URL. The sidecar exposes
+Configure `@stableops/agent-payments-sdk` to call this loopback URL. The sidecar exposes
 `GET /health` and authenticated `POST /v1/sign`; it rejects non-loopback listen
 addresses.
 
 For a managed key, create and validate an AWS KMS-backed signer:
 
 ```ts
-import { AwsKmsSigner, FileGrantAuthorizationStore } from '@stableops/agent-signer'
+import { AwsKmsSigner, FileGrantAuthorizationStore } from '@stableops/agent-payments-signer'
 
 function required(name: string): string {
   const value = process.env[name]?.trim()

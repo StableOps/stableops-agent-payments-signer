@@ -1,6 +1,6 @@
-# StableOps Agent Signer
+# StableOps Agent Payments Signer
 
-[![npm version](https://img.shields.io/npm/v/@stableops/agent-signer)](https://www.npmjs.com/package/@stableops/agent-signer) [![npm downloads](https://img.shields.io/npm/dm/@stableops/agent-signer)](https://www.npmjs.com/package/@stableops/agent-signer) [![License](https://img.shields.io/npm/l/@stableops/agent-signer)](https://www.npmjs.com/package/@stableops/agent-signer) [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue)](https://www.typescriptlang.org) [![Node](https://img.shields.io/badge/Node-%3E%3D20-339933)](https://nodejs.org)
+[![npm version](https://img.shields.io/npm/v/@stableops/agent-payments-signer)](https://www.npmjs.com/package/@stableops/agent-payments-signer) [![npm downloads](https://img.shields.io/npm/dm/@stableops/agent-payments-signer)](https://www.npmjs.com/package/@stableops/agent-payments-signer) [![License](https://img.shields.io/npm/l/@stableops/agent-payments-signer)](https://www.npmjs.com/package/@stableops/agent-payments-signer) [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue)](https://www.typescriptlang.org) [![Node](https://img.shields.io/badge/Node-%3E%3D20-339933)](https://nodejs.org)
 
 [查看英文说明](./README.md)
 
@@ -29,15 +29,15 @@ StableOps Agent Signer 是由客户自行托管的签名器伴随服务，用于
 ## 安装
 
 ```bash
-pnpm add @stableops/agent-signer
+pnpm add @stableops/agent-payments-signer
 ```
 
 ```bash
-npm install @stableops/agent-signer
+npm install @stableops/agent-payments-signer
 ```
 
 ```bash
-yarn add @stableops/agent-signer
+yarn add @stableops/agent-payments-signer
 ```
 
 ## 快速开始
@@ -49,7 +49,7 @@ import {
   FileGrantAuthorizationStore,
   LocalTestSigner,
   startSignerSidecar,
-} from '@stableops/agent-signer'
+} from '@stableops/agent-payments-signer'
 
 function required(name: string): string {
   const value = process.env[name]?.trim()
@@ -79,12 +79,12 @@ const { url } = await startSignerSidecar({
 console.log(`签名器正在监听 ${url}`)
 ```
 
-将 `@stableops/agent-sdk` 配置为调用这个环回地址。伴随服务提供 `GET /health` 和需要认证的 `POST /v1/sign`，并拒绝监听非环回地址。
+将 `@stableops/agent-payments-sdk` 配置为调用这个环回地址。伴随服务提供 `GET /health` 和需要认证的 `POST /v1/sign`，并拒绝监听非环回地址。
 
 如需使用托管密钥，可以创建并验证由 AWS KMS 支持的签名器：
 
 ```ts
-import { AwsKmsSigner, FileGrantAuthorizationStore } from '@stableops/agent-signer'
+import { AwsKmsSigner, FileGrantAuthorizationStore } from '@stableops/agent-payments-signer'
 
 function required(name: string): string {
   const value = process.env[name]?.trim()

@@ -1,12 +1,13 @@
 {
-  "name": "@stableops/agent-signer",
+  "name": "@stableops/agent-payments-signer",
   "version": "0.3.6",
   "private": false,
-  "description": "StableOps x402 execution grant verifier and customer-controlled signing sidecar.",
+  "description": "StableOps Agent Payments x402 execution grant verifier and customer-controlled signing sidecar.",
   "keywords": [
     "stableops",
     "x402",
     "agent",
+    "agent-payments",
     "signer",
     "sidecar",
     "usdc"
@@ -14,11 +15,11 @@
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/StableOps/stableops-agent-signer.git"
+    "url": "git+https://github.com/StableOps/stableops-agent-payments-signer.git"
   },
   "homepage": "https://stableops.dev/en/docs/agent-payments/signer",
   "bugs": {
-    "url": "https://github.com/StableOps/stableops-agent-signer/issues"
+    "url": "https://github.com/StableOps/stableops-agent-payments-signer/issues"
   },
   "main": "dist/index.js",
   "module": "dist/index.mjs",
