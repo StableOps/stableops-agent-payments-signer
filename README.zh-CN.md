@@ -17,6 +17,7 @@ StableOps Agent Signer 是由客户自行托管的签名器伴随服务，用于
 - 通过内存、本地文件或 Redis 提供幂等且防重放的执行授权存储。
 - 提供仅监听环回地址的 HTTP 伴随服务，可选用常量时间 Bearer 认证。
 - 限制请求体大小，并避免错误响应泄露内部信息。
+- 提供用于校验后钱包配对和伴随服务启动的命令行工具。
 - 同时输出 CJS、ESM 和 TypeScript 类型声明。
 
 ## 环境要求
@@ -27,6 +28,14 @@ StableOps Agent Signer 是由客户自行托管的签名器伴随服务，用于
 - AWS KMS 需要用途为 `SIGN_VERIFY` 且支持 `ECDSA_SHA_256` 的 `ECC_SECG_P256K1` 密钥。
 
 ## 安装
+
+全局安装命令行工具：
+
+```bash
+npm install -g @stableops/agent-payments-signer
+```
+
+需要在应用中使用库接口时，也可以添加项目依赖：
 
 ```bash
 pnpm add @stableops/agent-payments-signer
@@ -42,9 +51,32 @@ yarn add @stableops/agent-payments-signer
 
 ## 快速开始
 
+控制台会生成完整的钱包配对命令。CLI 会校验质询并确认配置密钥控制目标地址，随后只输出签名值：
+
+```bash
+stableops-agent-payments-signer pair-wallet --signer local --challenge <质询的-base64url-编码>
+```
+
+无需编写启动脚本即可运行 Base Sepolia 签名器伴随服务：
+
+```bash
+export STABLEOPS_EVM_PRIVATE_KEY_FILE='/受保护的绝对路径/evm-private-key'
+export STABLEOPS_GRANT_KEY_ID='替换为执行授权密钥标识'
+export STABLEOPS_GRANT_PUBLIC_KEY_FILE='/受保护的绝对路径/grant-public-key.pem'
+export STABLEOPS_AUTHORIZATION_STORE_FILE='/受保护的绝对路径/grant-authorizations.json'
+export STABLEOPS_SIDECAR_TOKEN='替换为高熵随机令牌'
+
+stableops-agent-payments-signer serve --signer local
+```
+
+`pair-wallet` 还支持 `--signer aws-kms` 和 `--signer solana`。本地密钥只从权限为 `0600` 的非符号链接文件读取，私钥值不会出现在命令行参数或环境变量中。`serve` 从环境变量读取密钥文件路径、网络绑定、执行授权验证、授权记录存储和伴随服务鉴权配置。
+
+## 库接口
+
 `LocalTestSigner` 只能用于沙盒测试资产：
 
 ```ts
+import { readFileSync } from 'node:fs'
 import {
   FileGrantAuthorizationStore,
   LocalTestSigner,
@@ -58,7 +90,10 @@ function required(name: string): string {
 }
 
 const signer = new LocalTestSigner({
-  privateKey: required('BASE_SEPOLIA_TEST_PRIVATE_KEY') as `0x${string}`,
+  privateKey: readFileSync(
+    required('STABLEOPS_EVM_PRIVATE_KEY_FILE'),
+    'utf8',
+  ).trim() as `0x${string}`,
   environment: 'SANDBOX',
   network: 'eip155:84532',
   grantVerification: {

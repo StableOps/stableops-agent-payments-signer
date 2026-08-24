@@ -22,6 +22,7 @@ that authorizes an agent to use that wallet.
 - Idempotent and replay-safe grant storage in memory or a local file.
 - Loopback HTTP sidecar with optional constant-time bearer authentication.
 - Request body limits and non-disclosing error responses.
+- A CLI for validated one-shot wallet pairing and sidecar startup.
 - Dual CJS and ESM builds with generated TypeScript declarations.
 
 ## Requirements
@@ -33,6 +34,14 @@ that authorizes an agent to use that wallet.
   `ECDSA_SHA_256` support.
 
 ## Installation
+
+Install globally for the CLI:
+
+```bash
+npm install -g @stableops/agent-payments-signer
+```
+
+Or add the package to an application that uses the library API:
 
 ```bash
 pnpm add @stableops/agent-payments-signer
@@ -48,9 +57,37 @@ yarn add @stableops/agent-payments-signer
 
 ## Quick Start
 
+The dashboard generates a complete wallet-pairing command. It validates the challenge and checks
+that the configured key controls the requested address before writing only the signature:
+
+```bash
+stableops-agent-payments-signer pair-wallet --signer local --challenge <base64url-challenge>
+```
+
+Start a Base Sepolia signer sidecar without writing a bootstrap script:
+
+```bash
+export STABLEOPS_EVM_PRIVATE_KEY_FILE='/protected/absolute/path/evm-private-key'
+export STABLEOPS_GRANT_KEY_ID='replace-with-the-execution-grant-key-id'
+export STABLEOPS_GRANT_PUBLIC_KEY_FILE='/protected/absolute/path/grant-public-key.pem'
+export STABLEOPS_AUTHORIZATION_STORE_FILE='/protected/absolute/path/grant-authorizations.json'
+export STABLEOPS_SIDECAR_TOKEN='replace-with-a-high-entropy-token'
+
+stableops-agent-payments-signer serve --signer local
+```
+
+`pair-wallet` also accepts `--signer aws-kms` and `--signer solana`. Local keys are read only from
+non-symlink files restricted to mode `0600`. Private-key values are never accepted in arguments or
+environment variables. `serve` reads key paths,
+network binding, grant verification, authorization storage, and sidecar authentication from
+environment variables.
+
+## Library API
+
 Use `LocalTestSigner` only with Sandbox test assets:
 
 ```ts
+import { readFileSync } from 'node:fs'
 import {
   FileGrantAuthorizationStore,
   LocalTestSigner,
@@ -64,7 +101,10 @@ function required(name: string): string {
 }
 
 const signer = new LocalTestSigner({
-  privateKey: required('BASE_SEPOLIA_TEST_PRIVATE_KEY') as `0x${string}`,
+  privateKey: readFileSync(
+    required('STABLEOPS_EVM_PRIVATE_KEY_FILE'),
+    'utf8',
+  ).trim() as `0x${string}`,
   environment: 'SANDBOX',
   network: 'eip155:84532',
   grantVerification: {

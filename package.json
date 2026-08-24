@@ -24,6 +24,9 @@
   "main": "dist/index.js",
   "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
+  "bin": {
+    "stableops-agent-payments-signer": "dist/bin.js"
+  },
   "exports": {
     ".": {
       "import": {
@@ -41,7 +44,10 @@
   },
   "sideEffects": false,
   "files": [
-    "dist"
+    "dist",
+    "README.md",
+    "README.zh-CN.md",
+    "LICENSE"
   ],
   "publishConfig": {
     "access": "public"
