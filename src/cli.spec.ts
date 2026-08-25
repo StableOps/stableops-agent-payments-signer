@@ -118,6 +118,32 @@ describe('StableOps Agent Payments Signer CLI', () => {
     expect(output.stdout).toBe('')
     expect(output.stderr).toContain('must not be accessible by group or other users')
   })
+
+  it('私钥缺少 0x 前缀时给出可操作的错误提示', async () => {
+    const message = pairingMessage({ expiresAt: '2099-08-24T14:53:26.643Z' })
+    const output = createIo()
+    const env = await localSignerEnv()
+    await writeFile(env.STABLEOPS_EVM_PRIVATE_KEY_FILE!, `${TEST_PRIVATE_KEY.slice(2)}\n`, {
+      mode: 0o600,
+    })
+
+    const exitCode = await runSignerCli(
+      [
+        'pair-wallet',
+        '--signer',
+        'local',
+        '--challenge',
+        Buffer.from(message).toString('base64url'),
+      ],
+      env,
+      output.io,
+    )
+
+    expect(exitCode).toBe(1)
+    expect(output.stdout).toBe('')
+    expect(output.stderr).toContain('missing the required 0x prefix')
+    expect(output.stderr).not.toContain(TEST_PRIVATE_KEY.slice(2))
+  })
 })
 
 function pairingMessage({

@@ -207,7 +207,16 @@ function requireSolanaNetwork(value: string): `solana:${string}` {
 
 async function readLocalEvmPrivateKey(env: NodeJS.ProcessEnv): Promise<Hex> {
   const value = await readSecretFile(env, 'STABLEOPS_EVM_PRIVATE_KEY_FILE')
-  if (!/^0x[0-9a-fA-F]{64}$/u.test(value)) throw new Error('local EVM private key is invalid')
+  if (/^[0-9a-fA-F]{64}$/u.test(value)) {
+    throw new Error(
+      'local EVM private key is missing the required 0x prefix. Expected file content: 0x followed by 64 hexadecimal digits',
+    )
+  }
+  if (!/^0x[0-9a-fA-F]{64}$/u.test(value)) {
+    throw new Error(
+      'local EVM private key has an invalid format. Expected file content: 0x followed by 64 hexadecimal digits',
+    )
+  }
   return value as Hex
 }
 

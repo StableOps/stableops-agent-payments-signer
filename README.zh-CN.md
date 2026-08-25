@@ -57,7 +57,7 @@ yarn add @stableops/agent-payments-signer
 stableops-agent-payments-signer pair-wallet --signer local --challenge <质询的-base64url-编码>
 ```
 
-无需编写启动脚本即可运行 Base Sepolia 签名器伴随服务：
+启动 Base Sepolia 签名器伴随服务：
 
 ```bash
 export STABLEOPS_EVM_PRIVATE_KEY_FILE='/受保护的绝对路径/evm-private-key'

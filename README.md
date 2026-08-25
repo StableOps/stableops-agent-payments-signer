@@ -64,7 +64,7 @@ that the configured key controls the requested address before writing only the s
 stableops-agent-payments-signer pair-wallet --signer local --challenge <base64url-challenge>
 ```
 
-Start a Base Sepolia signer sidecar without writing a bootstrap script:
+Start a Base Sepolia signer sidecar:
 
 ```bash
 export STABLEOPS_EVM_PRIVATE_KEY_FILE='/protected/absolute/path/evm-private-key'
