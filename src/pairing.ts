@@ -26,7 +26,10 @@ export function parseWalletPairingChallenge(
   message: string,
   now: Date = new Date(),
 ): WalletPairingChallenge {
-  const lines = message.split('\n')
+  // 终端标准输入通常会在最后一行追加换行，Windows 剪贴板也可能使用 CRLF。
+  // 只移除一个末尾换行，不放宽中间的行数、缩进或字段格式校验。
+  const normalizedMessage = message.replace(/\r\n/gu, '\n').replace(/\n$/u, '')
+  const lines = normalizedMessage.split('\n')
   if (lines.length !== 7 || lines[0] !== 'StableOps Agent Wallet Pairing') {
     throw pairingError('input is not a complete StableOps wallet pairing challenge')
   }
@@ -76,7 +79,7 @@ export function parseWalletPairingChallenge(
     address,
     nonce,
     expiresAt,
-    message,
+    message: normalizedMessage,
   }
 }
 
@@ -96,7 +99,7 @@ export async function signWalletPairingChallengeWithLocalEvmKey(
   if (getAddress(account.address) !== getAddress(challenge.address)) {
     throw pairingError('the local EVM key does not control the challenge address')
   }
-  return account.signMessage({ message })
+  return account.signMessage({ message: challenge.message })
 }
 
 export async function signWalletPairingChallengeWithLocalSolanaKey(
@@ -112,7 +115,7 @@ export async function signWalletPairingChallengeWithLocalSolanaKey(
   if (signer.address !== challenge.address) {
     throw pairingError('the local Solana key does not control the challenge address')
   }
-  const [signatures] = await signer.signMessages([createSignableMessage(message)])
+  const [signatures] = await signer.signMessages([createSignableMessage(challenge.message)])
   const signature = signatures?.[signer.address]
   if (!signature) throw pairingError('the local Solana signer did not return a signature')
   return base58.encode(signature)
@@ -137,7 +140,7 @@ export async function signWalletPairingChallengeWithAwsKms(
   if (getAddress(address) !== getAddress(challenge.address)) {
     throw pairingError('the AWS KMS key does not control the challenge address')
   }
-  const digest = hashMessage(message)
+  const digest = hashMessage(challenge.message)
   const response = await client.send(
     new SignCommand({
       KeyId: options.keyId,

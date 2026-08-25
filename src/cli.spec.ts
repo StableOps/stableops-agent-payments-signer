@@ -49,6 +49,26 @@ describe('StableOps Agent Payments Signer CLI', () => {
     ).resolves.toBe(true)
   })
 
+  it('接受标准输入末尾的一个换行符', async () => {
+    const message = pairingMessage({ expiresAt: '2099-08-24T14:53:26.643Z' })
+    const output = createIo()
+    output.io.stdin = Readable.from([`${message}\n`])
+    const env = await localSignerEnv()
+
+    const exitCode = await runSignerCli(['pair-wallet', '--signer', 'local'], env, output.io)
+
+    expect(exitCode).toBe(0)
+    expect(output.stderr).toBe('')
+    expect(output.stdout).toMatch(/^0x[0-9a-f]{130}\n$/u)
+    await expect(
+      verifyMessage({
+        address: TEST_ACCOUNT.address,
+        message,
+        signature: output.stdout.trim() as `0x${string}`,
+      }),
+    ).resolves.toBe(true)
+  })
+
   it('拒绝过期质询且不输出签名', async () => {
     const message = pairingMessage({ expiresAt: '2020-08-24T14:53:26.643Z' })
     const output = createIo()
