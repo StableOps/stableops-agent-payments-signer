@@ -15,7 +15,7 @@ that authorizes an agent to use that wallet.
 
 ## Features
 
-- Compact JWS execution-grant verification with pinned Ed25519 public keys.
+- Compact JWS execution-grant verification with automatically discovered or locally pinned Ed25519 public keys.
 - Complete EIP-712 binding for EIP-3009 and Permit2 payments.
 - EVM local private-key signer and Solana Ed25519 local signer.
 - AWS KMS signer for `ECC_SECG_P256K1` asymmetric signing keys.
@@ -28,7 +28,7 @@ that authorizes an agent to use that wallet.
 ## Requirements
 
 - Node.js 20 or newer.
-- The StableOps execution-grant public key and key ID for the target environment.
+- HTTPS access to the StableOps API, or an execution-grant public key and key ID for offline deployments.
 - For local testing, a Base Sepolia wallet private key holding enough test USDC. The current EIP-3009 flow is submitted by the facilitator and does not require test ETH in the payer wallet.
 - For AWS KMS, an `ECC_SECG_P256K1` key with `SIGN_VERIFY` usage and
   `ECDSA_SHA_256` support.
@@ -68,19 +68,21 @@ Start a Base Sepolia signer sidecar:
 
 ```bash
 export STABLEOPS_EVM_PRIVATE_KEY_FILE='/protected/absolute/path/evm-private-key'
-export STABLEOPS_GRANT_KEY_ID='replace-with-the-execution-grant-key-id'
-export STABLEOPS_GRANT_PUBLIC_KEY_FILE='/protected/absolute/path/grant-public-key.pem'
 export STABLEOPS_AUTHORIZATION_STORE_FILE='/protected/absolute/path/grant-authorizations.json'
 export STABLEOPS_SIDECAR_TOKEN='replace-with-a-high-entropy-token'
 
 stableops-agent-payments-signer serve --signer local
 ```
 
+By default, `serve` discovers execution-grant verification keys from
+`https://api.stableops.dev/v1/public/agent-payments/execution-grant-keys`. Users do not configure a
+control-plane URL. For offline use, configure
+`STABLEOPS_GRANT_KEY_ID` and `STABLEOPS_GRANT_PUBLIC_KEY_FILE` together to pin a local PEM key.
+
 `pair-wallet` also accepts `--signer aws-kms` and `--signer solana`. Local keys are read only from
 non-symlink files restricted to mode `0600`. Private-key values are never accepted in arguments or
-environment variables. `serve` reads key paths,
-network binding, grant verification, authorization storage, and sidecar authentication from
-environment variables.
+environment variables. `serve` reads key paths, network binding, authorization storage, and
+sidecar authentication from environment variables.
 
 ## Library API
 

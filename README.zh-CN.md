@@ -10,7 +10,7 @@ StableOps Agent Signer 是由客户自行托管的签名器伴随服务，用于
 
 ## 功能
 
-- 使用固定的 Ed25519 公钥验证紧凑 JWS 执行授权。
+- 从 StableOps API 自动发现 Ed25519 公钥并验证紧凑 JWS 执行授权，也可固定本地公钥。
 - 完整绑定 EIP-3009 和 Permit2 付款的 EIP-712 字段。
 - 提供 EVM 本地私钥签名器和 Solana Ed25519 本地签名器。
 - 支持使用 `ECC_SECG_P256K1` 非对称签名密钥的 AWS KMS 签名器。
@@ -23,7 +23,7 @@ StableOps Agent Signer 是由客户自行托管的签名器伴随服务，用于
 ## 环境要求
 
 - Node.js 20 或更高版本。
-- 目标环境对应的 StableOps 执行授权公钥和密钥编号。
+- 能够通过 HTTPS 访问 StableOps API，离线部署则需要执行授权公钥和密钥编号。
 - 本地测试需要 Base Sepolia 钱包私钥，钱包内应有足够的测试 USDC。当前 EIP-3009 流程由结算服务提交交易，付款钱包不需要测试 ETH。
 - AWS KMS 需要用途为 `SIGN_VERIFY` 且支持 `ECDSA_SHA_256` 的 `ECC_SECG_P256K1` 密钥。
 
@@ -61,15 +61,15 @@ stableops-agent-payments-signer pair-wallet --signer local --challenge <质询�
 
 ```bash
 export STABLEOPS_EVM_PRIVATE_KEY_FILE='/受保护的绝对路径/evm-private-key'
-export STABLEOPS_GRANT_KEY_ID='替换为执行授权密钥标识'
-export STABLEOPS_GRANT_PUBLIC_KEY_FILE='/受保护的绝对路径/grant-public-key.pem'
 export STABLEOPS_AUTHORIZATION_STORE_FILE='/受保护的绝对路径/grant-authorizations.json'
 export STABLEOPS_SIDECAR_TOKEN='替换为高熵随机令牌'
 
 stableops-agent-payments-signer serve --signer local
 ```
 
-`pair-wallet` 还支持 `--signer aws-kms` 和 `--signer solana`。本地密钥只从权限为 `0600` 的非符号链接文件读取，私钥值不会出现在命令行参数或环境变量中。`serve` 从环境变量读取密钥文件路径、网络绑定、执行授权验证、授权记录存储和伴随服务鉴权配置。
+`serve` 默认从 `https://api.stableops.dev/v1/public/agent-payments/execution-grant-keys` 自动获取执行授权验证公钥。用户不需要配置控制面地址。离线部署可同时设置 `STABLEOPS_GRANT_KEY_ID` 和 `STABLEOPS_GRANT_PUBLIC_KEY_FILE`，改用本地 PEM 公钥。
+
+`pair-wallet` 还支持 `--signer aws-kms` 和 `--signer solana`。本地密钥只从权限为 `0600` 的非符号链接文件读取，私钥值不会出现在命令行参数或环境变量中。`serve` 从环境变量读取密钥文件路径、网络绑定、授权记录存储和伴随服务鉴权配置。
 
 ## 库接口
 

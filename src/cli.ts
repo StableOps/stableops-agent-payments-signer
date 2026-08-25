@@ -11,6 +11,7 @@ import {
   signWalletPairingChallengeWithLocalEvmKey,
   signWalletPairingChallengeWithLocalSolanaKey,
 } from './pairing'
+import { loadGrantVerificationKeys } from './grant-key-discovery'
 import { startSignerSidecar } from './sidecar'
 import { FileGrantAuthorizationStore } from './store'
 import { BASE_SEPOLIA_NETWORK, type StableOpsEnvironment } from './types'
@@ -54,12 +55,10 @@ export async function runSignerCli(
       const signerKind = readSignerKind(options.signer ?? env.STABLEOPS_SIGNER_TYPE)
       const environment = readEnvironment(env.STABLEOPS_SIGNER_ENVIRONMENT, signerKind)
       const network = readNetwork(env.STABLEOPS_SIGNER_NETWORK, signerKind)
-      const grantKeyId = required(env, 'STABLEOPS_GRANT_KEY_ID')
-      const publicKey = await readFile(required(env, 'STABLEOPS_GRANT_PUBLIC_KEY_FILE'), 'utf8')
       const store = new FileGrantAuthorizationStore(
         required(env, 'STABLEOPS_AUTHORIZATION_STORE_FILE'),
       )
-      const grantVerification = { publicKeys: { [grantKeyId]: publicKey } }
+      const grantVerification = { publicKeys: await loadGrantVerificationKeys(env) }
 
       const signer =
         signerKind === 'local'
@@ -265,5 +264,6 @@ If --challenge is omitted, the exact challenge is read from standard input.
 
 Run configuration is read from environment variables. Local private keys are read only from
 access-restricted files and are never accepted as arguments or environment-variable values.
+serve discovers execution-grant verification keys automatically unless a local key is pinned.
 See https://stableops.dev/docs/agent-payments/signer.
 `
