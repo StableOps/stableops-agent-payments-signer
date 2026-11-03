@@ -1,6 +1,6 @@
 {
   "name": "@stableops/agent-payments-signer",
-  "version": "0.6.1",
+  "version": "0.7.0",
   "private": false,
   "description": "StableOps Agent Payments x402 execution grant verifier and customer-controlled signing sidecar.",
   "keywords": [
